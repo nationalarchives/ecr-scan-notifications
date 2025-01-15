@@ -193,8 +193,8 @@ object EventMessages {
             s"$exportInfoMessage"
         } else {
           s":x: Export *failure* on *${incomingEvent.environment}!* \n" +
-          s"*Consignment ID:* ${incomingEvent.consignmentId}" +
-          s"$exportInfoMessage"
+            s"*Consignment ID:* ${incomingEvent.consignmentId}" +
+            s"$exportInfoMessage"
         }
         SlackMessage(List(SlackBlock("section", SlackText("mrkdwn", message)))).some
       } else {
@@ -203,12 +203,12 @@ object EventMessages {
     }
 
     private def constructExportInfoMessage(incomingEvent: ExportStatusEvent): String = {
-     if (incomingEvent.successDetails.isDefined) {
+      if (incomingEvent.successDetails.isDefined) {
         val value = incomingEvent.successDetails.get
         s"\n*User ID:* ${value.userId}" +
-        s"\n*Consignment Reference:* ${value.consignmentReference}" +
-        s"\n*Transferring Body Name:* ${value.transferringBodyName}"
-      } else if(incomingEvent.failureCause.isDefined) {
+          s"\n*Consignment Reference:* ${value.consignmentReference}" +
+          s"\n*Transferring Body Name:* ${value.transferringBodyName}"
+      } else if (incomingEvent.failureCause.isDefined) {
         s"\n*Cause:* ${incomingEvent.failureCause.get}"
       } else ""
     }
@@ -232,22 +232,23 @@ object EventMessages {
   implicit val keycloakEventMessages: Messages[KeycloakEvent, Unit] = new Messages[KeycloakEvent, Unit] {
     override def context(event: KeycloakEvent): IO[Unit] = IO.unit
 
-    override def email(incomingEvent: KeycloakEvent, context: Unit): Option[Email] = {
-      logger.info(s"Skipping email for Keycloak event $incomingEvent")
+    override def email(keycloakEvent: KeycloakEvent, context: Unit): Option[Email] = {
+      logger.info(s"Skipping email for Keycloak event $keycloakEvent")
       Option.empty
     }
 
     override def slack(keycloakEvent: KeycloakEvent, context: Unit): Option[SlackMessage] = {
-      if(keycloakEvent.tdrEnv == "intg") {
-        Option.empty
-      } else {
+      if (keycloakEvent.tdrEnv != "intg") {
         SlackMessage(List(SlackBlock("section", SlackText("mrkdwn", s":warning: Keycloak Event ${keycloakEvent.tdrEnv}: ${keycloakEvent.message}")))).some
+      } else {
+        None
       }
     }
   }
 
   implicit val transferCompleteEventMessages: Messages[TransferCompleteEvent, Unit] = new Messages[TransferCompleteEvent, Unit] {
     override def context(event: TransferCompleteEvent): IO[Unit] = IO.unit
+
     override def govUkNotifyEmail(transferCompleteEvent: TransferCompleteEvent, context: Unit): List[GovUKEmailDetails] = {
       List(
         GovUKEmailDetails(
@@ -278,36 +279,38 @@ object EventMessages {
 
   implicit val metadataReviewRequestEventMessages: Messages[MetadataReviewRequestEvent, Unit] = new Messages[MetadataReviewRequestEvent, Unit] {
     override def context(event: MetadataReviewRequestEvent): IO[Unit] = IO.unit
+
     override def govUkNotifyEmail(metadataReviewRequestEvent: MetadataReviewRequestEvent, context: Unit): List[GovUKEmailDetails] = {
       List(
-          GovUKEmailDetails(
-            templateId = eventConfig("gov_uk_notify.metadata_review_requested_dta_template_id"),
-            userEmail = eventConfig("tdr_inbox_email_address"),
-            personalisation = Map(
-              "userEmail" -> metadataReviewRequestEvent.userEmail,
-              "userId" -> metadataReviewRequestEvent.userId,
-              "consignmentId" -> metadataReviewRequestEvent.consignmentId,
-              "transferringBodyName" -> metadataReviewRequestEvent.transferringBodyName,
-              "consignmentReference" -> metadataReviewRequestEvent.consignmentReference,
-              "seriesCode" -> metadataReviewRequestEvent.seriesCode
-            ),
-            reference = s"${metadataReviewRequestEvent.consignmentReference}"
-          )
+        GovUKEmailDetails(
+          templateId = eventConfig("gov_uk_notify.metadata_review_requested_dta_template_id"),
+          userEmail = eventConfig("tdr_inbox_email_address"),
+          personalisation = Map(
+            "userEmail" -> metadataReviewRequestEvent.userEmail,
+            "userId" -> metadataReviewRequestEvent.userId,
+            "consignmentId" -> metadataReviewRequestEvent.consignmentId,
+            "transferringBodyName" -> metadataReviewRequestEvent.transferringBodyName,
+            "consignmentReference" -> metadataReviewRequestEvent.consignmentReference,
+            "seriesCode" -> metadataReviewRequestEvent.seriesCode
+          ),
+          reference = s"${metadataReviewRequestEvent.consignmentReference}"
+        )
       ) ++ (if (eventConfig("gov_uk_notify.external_emails_on").toBoolean) List(
-          GovUKEmailDetails(
-            templateId = eventConfig("gov_uk_notify.metadata_review_requested_tb_template_id"),
-            userEmail = metadataReviewRequestEvent.userEmail,
-            personalisation = Map(
-              "consignmentReference" -> metadataReviewRequestEvent.consignmentReference
-            ),
-            reference = s"${metadataReviewRequestEvent.consignmentReference}"
-          )
+        GovUKEmailDetails(
+          templateId = eventConfig("gov_uk_notify.metadata_review_requested_tb_template_id"),
+          userEmail = metadataReviewRequestEvent.userEmail,
+          personalisation = Map(
+            "consignmentReference" -> metadataReviewRequestEvent.consignmentReference
+          ),
+          reference = s"${metadataReviewRequestEvent.consignmentReference}"
+        )
       ) else List.empty)
     }
   }
 
   implicit val metadataReviewSubmittedEventMessages: Messages[MetadataReviewSubmittedEvent, Unit] = new Messages[MetadataReviewSubmittedEvent, Unit] {
     override def context(event: MetadataReviewSubmittedEvent): IO[Unit] = IO.unit
+
     override def govUkNotifyEmail(metadataReviewSubmittedEvent: MetadataReviewSubmittedEvent, context: Unit): List[GovUKEmailDetails] = {
       if (eventConfig("gov_uk_notify.external_emails_on").toBoolean) {
         val templateId = if (metadataReviewSubmittedEvent.status == "Completed") eventConfig("gov_uk_notify.metadata_review_approved_template_id") else eventConfig("gov_uk_notify.metadata_review_rejected_template_id")
@@ -361,7 +364,7 @@ object EventMessages {
     override def email(incomingEvent: StepFunctionError, context: Unit): Option[Email] = None
 
     override def slack(incomingEvent: StepFunctionError, context: Unit): Option[SlackMessage] = {
-      if(incomingEvent.environment != "intg") {
+      if (incomingEvent.environment != "intg") {
         val messageList = List(
           ":warning: *Backend checks failure for consignment*",
           s"*ConsignmentId* ${incomingEvent.consignmentId}",
@@ -382,8 +385,8 @@ object EventMessages {
     override def email(incomingEvent: DraftMetadataStepFunctionError, context: Unit): Option[Email] = None
 
     override def slack(incomingEvent: DraftMetadataStepFunctionError, context: Unit): Option[SlackMessage] = {
-      if(incomingEvent.environment == "prod") {
-         val messageList = List(
+      if (incomingEvent.environment == "prod") {
+        val messageList = List(
           ":warning: *DraftMetadata upload has failed for consignment*",
           s"*ConsignmentId* ${incomingEvent.consignmentId}",
           s"*Environment* ${incomingEvent.environment}",
@@ -481,9 +484,13 @@ object EventMessages {
 
 case class ImageScanReport(findings: Seq[Finding]) {
   def criticalCount: Int = findings.count(_.severity == FindingSeverity.CRITICAL)
+
   def highCount: Int = findings.count(_.severity == FindingSeverity.HIGH)
+
   def mediumCount: Int = findings.count(_.severity == FindingSeverity.MEDIUM)
+
   def lowCount: Int = findings.count(_.severity == FindingSeverity.LOW)
+
   def undefinedCount: Int = findings.count(_.severity == FindingSeverity.UNDEFINED)
 }
 

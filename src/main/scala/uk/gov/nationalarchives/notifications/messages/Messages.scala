@@ -46,6 +46,7 @@ object Messages {
     "slack.webhook.standard_url",
     "slack.webhook.tdr_url",
     "slack.webhook.export_url",
+    "slack.webhook.bau_url",
     "sns.topic.da_event_bus_arn",
     "gov_uk_notify.external_emails_on",
     "gov_uk_notify.api_key",
@@ -134,7 +135,8 @@ object Messages {
       case ev: ExportStatusEvent =>
         val failureEscalationUrl = Option.when(ev.environment == "prod" && !ev.success)(eventConfig("slack.webhook.tdr_url"))
         Seq(Some(eventConfig("slack.webhook.export_url")), failureEscalationUrl).flatten
-      case _: KeycloakEvent => Seq(eventConfig("slack.webhook.tdr_url"))
+      case ev: KeycloakEvent if ev.tdrEnv == "prod" => Seq(eventConfig("slack.webhook.tdr_url"))
+      case ev: KeycloakEvent if ev.tdrEnv != "prod" => Seq(eventConfig("slack.webhook.bau_url"))
       case _: DraftMetadataStepFunctionError => Seq(eventConfig("slack.webhook.tdr_url"))
       case _                => Seq(eventConfig("slack.webhook.url"))
     }
